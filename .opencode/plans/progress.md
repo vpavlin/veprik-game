@@ -3,6 +3,21 @@
 
 ---
 
+## LATEST: Off-screen thief indicators (red arrows on screen edges)
+
+### Feature: Red arrow indicators for off-screen thieves
+- **Problem**: Thieves outside the camera view are invisible — player doesn't know where they are
+- **Fix**: Added `_drawOffScreenIndicators` in game.js — for each uncaught thief outside the visible area:
+  - Calculates thief's screen position relative to camera
+  - Draws a pulsing red arrow on the nearest screen edge pointing toward the thief
+  - Arrow position follows thief's position along the visible axis (clamped to screen bounds)
+  - Flash animation using `sin(gameTime*6)` for attention-grabbing pulse effect
+  - Only shows arrows when thief is beyond a 40px margin from screen edge
+- **Edge cases handled**: thief off multiple edges (picks closest), corner positioning
+- **Deployed to GitHub Pages**: https://vpavlin.github.io/veprik-game/
+
+---
+
 ## LATEST FIXES: Driving Mode Complete (4 issues fixed)
 
 ### Bug 13: Car doesn't look like a car (top-down instead of rear view)
