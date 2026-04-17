@@ -160,7 +160,7 @@ Game.prototype._draw=function(){
   var w=window.innerWidth,h=window.innerHeight;ctx.clearRect(0,0,w,h);
   if(this.state==='menu'){this._drawMenu(w,h);return}
   if(this.state==='drivingComplete'){this._drawDrivingComplete(w,h);return}
-  this._drawGarden(w,h);var ds=[];
+  this._drawGarden(w,h);this._drawOffScreenIndicators(w,h);var ds=[];
   for(var i=0;i<this.vegetables.length;i++){var v=this.vegetables[i];if(!v.collected)ds.push({y:v.y,d:bindMethod(v,'draw',ctx,this.camera.x,this.camera.y)})}
   for(var i=0;i<this.obstacles.length;i++){var o=this.obstacles[i];ds.push({y:o.y+o.h,d:bindMethod(o,'draw',ctx,this.camera.x,this.camera.y)})}
   for(var i=0;i<this.thieves.length;i++){var t=this.thieves[i];ds.push({y:t.pos.y,d:bindMethod(t,'draw',ctx,this.camera.x,this.camera.y)})}
@@ -252,7 +252,30 @@ Game.prototype._drawDrivingComplete=function(w,h){
   ctx.fillText('Klepni pro novou hru',w/2,cy+40)
 };
 
-Game.prototype._drawMenu=function(w,h){
+Game.prototype._drawOffScreenIndicators=function(w,h){
+   var camX=this.camera.x,camY=this.camera.y,margin=40;
+   for(var i=0;i<this.thieves.length;i++){
+     var t=this.thieves[i];if(t.state==='caught')continue;
+     var sx=t.pos.x-camX,sy=t.pos.y-camY;
+     if(sx>-margin&&sx<w+margin&&sy>-margin&&sy<h+margin)continue;
+     var cx,cy,dirX=0,dirY=0;
+     if(sx<-margin){cx=0;dirX=1}
+     else if(sx>w+margin){cx=w;dirX=-1}
+     else if(sy>h+margin){cy=h;dirY=-1}
+     else if(sy<-margin){cy=0;dirY=1}
+     if(dirY){var ty=sy;if(cy===0&&ty>h)continue;if(cy===h&&ty<0)continue}
+     if(dirX){var tx=sx;if(cx===0&&tx>w)continue;if(cx===w&&tx<0)continue}
+     if(!cy)cy=Math.max(25,Math.min(h-25,sy));
+      if(!cx)cx=Math.max(25,Math.min(w-25,sx));
+      var flash=Math.sin(this.gameTime*6)*0.3+0.7;
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(dirX===-1?Math.PI:dirY===1?Math.PI/2:dirY===-1?-Math.PI/2:0);
+     ctx.globalAlpha=flash;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-8,-12);ctx.lineTo(-4,0);ctx.lineTo(-8,12);ctx.closePath();
+     ctx.fillStyle='#ff3333';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+     ctx.globalAlpha=flash*0.6;ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fillStyle='#ff6666';ctx.fill();
+     ctx.restore();ctx.globalAlpha=1}
+ };
+
+ Game.prototype._drawMenu=function(w,h){
   ctx.fillStyle='#5a9e3a';ctx.fillRect(0,0,w,h);
   for(var i=0;i<40;i++){var gx=(i*47)%w,gy=h-80+((i*31)%60);
     ctx.strokeStyle='#4d8a2f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(gx,gy);
