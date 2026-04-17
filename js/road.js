@@ -5,7 +5,7 @@ var ROAD_WIDTH = 2000;
 var LANES = 3;
 var CAMERA_HEIGHT = 1000;
 var CAMERA_DEPTH = 200;
-var DRAW_DISTANCE = 300;
+var DRAW_DISTANCE = 200;
 
 var COLORS = {
     SKY_TOP: '#72D7EE',
@@ -532,17 +532,26 @@ function renderRoad(ctx, w, h, cx, cy, cz, roadMap, time) {
         if (n < DRAW_DISTANCE - 5) {
             for (var si = 0; si < seg.sprites.length; si++) {
                 var spr = seg.sprites[si];
-                drawSprite(ctx, spr.type, spr.x, spr.y, spr.scale, time);
+                var sprScale = seg.p1.scale;
+                var sprScreenX = w / 2 + x + spr.offset * ROAD_WIDTH * 0.5 * sprScale;
+                var sprScreenY = seg._screenY || (camH - seg.p1.y) * sprScale + height / 2;
+                drawSprite(ctx, spr.type, sprScreenX, sprScreenY, sprScale, time);
             }
 
             for (var ci2 = 0; ci2 < seg.collectibles.length; ci2++) {
                 var col = seg.collectibles[ci2];
-                drawCollectible(ctx, col.type, col.x, col.y, col.w / 30, time * 3 + ci2);
+                var colScale = seg.p1.scale;
+                var colScreenX = w / 2 + x + col.offset * ROAD_WIDTH * 0.5 * colScale;
+                var colScreenY = seg._screenY || (camH - seg.p1.y) * colScale + height / 2;
+                drawCollectible(ctx, col.type, colScreenX, colScreenY, colScale, time * 3 + ci2);
             }
 
             for (var oi = 0; oi < seg.obstacles.length; oi++) {
                 var obs = seg.obstacles[oi];
-                drawObstacle(ctx, obs.type, obs.x, obs.y, obs.w / 40);
+                var obsScale = seg.p1.scale;
+                var obsScreenX = w / 2 + x + obs.offset * ROAD_WIDTH * 0.5 * obsScale;
+                var obsScreenY = seg._screenY || (camH - seg.p1.y) * obsScale + height / 2;
+                drawObstacle(ctx, obs.type, obsScreenX, obsScreenY, obsScale);
             }
         }
 

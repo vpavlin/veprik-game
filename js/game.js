@@ -17,6 +17,7 @@ function Game(){
   this.goals=[];this.driveScore=0;this.driveDistance=0;
   this.cameraOffset=new Vec();this.carX=0;this.roadMap=null;
   this.accelerationMode='auto';this.touchAccel=false;
+  this.tapSteer=0;this.tapSteerTimer=0;
 }
 
 Game.prototype._setupWorld=function(){
@@ -50,6 +51,8 @@ Game.prototype._setupWorld=function(){
     {x:950,y:550},{x:1010,y:540},{x:80,y:450},{x:140,y:460}];
   this.vegetables=[];
   for(var i=0;i<vp.length;i++){this.vegetables.push(new Veg(vp[i].x,vp[i].y,vt[i%vt.length]))}
+  this._gardenFlowers=[];
+  for(var i=0;i<12;i++){this._gardenFlowers.push({i:(i*97)%1000,yi:(i*61)%1000})}
 };
 
 Game.prototype._setupDriveWorld=function(){
@@ -93,6 +96,7 @@ Game.prototype._setupInput=function(){
     if(self.state==='playingDriving')self.steerInput=0});
   canvas.addEventListener('touchcancel',function(e){e.preventDefault();self.joystick.handleEnd('cancelled');
     if(self.state==='playingDriving')self.steerInput=0});
+  canvas.addEventListener('mouseup',function(){md=false;if(self.state==='playingDriving'){self.steerInput=0;self.tapSteer=0;self.tapSteerTimer=0}});
   var md=false;
   canvas.addEventListener('mousedown',function(e){md=true;self.joystick.handleStart(e.clientX,e.clientY,'mouse');self._handleTap({x:e.clientX,y:e.clientY})});
   canvas.addEventListener('mousemove',function(e){if(md&&self.joystick)self.joystick.handleMove(e.clientX,e.clientY,'mouse')});
@@ -139,11 +143,16 @@ Game.prototype._handleTap=function(tap){
     return;
   }
   if(this.state==='playingDriving'){
-    var camBtnX=w-70,camBtnY=55,camBtnS=40;
+    var camBtnX=w-70,camBtnY=60,camBtnS=20;
     if(tap.x>camBtnX-camBtnS&&tap.x<camBtnX+camBtnS&&tap.y>camBtnY-camBtnS&&tap.y<camBtnY+camBtnS){
       this.viewMode=this.viewMode==='behind'?'cockpit':'behind';return;
     }
-    if(tap.x<w/2)this.steerInput=-1;else this.steerInput=1;
+    if(this.joystick&&this.joystick.active){
+      this.steerInput=this.joystick.dx;
+    }else{
+      this.tapSteer=0;this.tapSteerTimer=0.8;
+      if(tap.x<w/2)this.tapSteer=-0.8;else this.tapSteer=0.8;
+    }
     return;
   }
   if(this.state==='drivingComplete'){this.state='drivingMenu'}
@@ -189,7 +198,7 @@ Game.prototype._update=function(dt){
     this.waveAlertText='Vsechny chyceny! Cekam na dalsiho...';this.waveAlertTimer=2}
   else{this.waveAlertText='';this.waveAlertTimer=0}
   for(var i=this.particles.length-1;i>=0;i--){this.particles[i].update(dt);if(this.particles[i].life<=0)this.particles.splice(i,1)}
-  if(Math.random()<dt*2){var vx=Math.random()*WORLD_W,vy=Math.random()*WORLD_H;
+  if(Math.random()<dt*0.3){var vx=Math.random()*WORLD_W,vy=Math.random()*WORLD_H;
     var hue=45+Math.random()*30;this.particles.push(new Particle(vx,vy,'hsl('+hue+',80%,75%)',2+Math.random(),2,(Math.random()-0.5)*15,-Math.random()*10));}
   for(var i=0;i<this.thieves.length;i++){var t=this.thieves[i];
     if(t.state==='stealing'&&this.stealAlertTimer<=0){this.stealAlertText=t.name+' krade!';this.stealAlertTimer=2;break}}
@@ -200,11 +209,13 @@ Game.prototype._updateDriving=function(dt){
   var speedCurve=Math.min(120,60+(90-Math.max(0,this.driveTimer))*0.3);
   if(this.accelerationMode==='touch')speedCurve+=20;
   this.driveSpeed+=(speedCurve-this.driveSpeed)*3*dt;
+  if(this.tapSteerTimer>0){this.tapSteerTimer-=dt;this.tapSteer*=Math.pow(0.3,dt)}
+  else{this.tapSteer=0}
   var joySteer=0;
   if(this.joystick&&this.joystick.active){joySteer=this.joystick.dx}
-  var effectiveSteer=this.steerInput+joySteer;
-  if(Math.abs(effectiveSteer)>1.5)effectiveSteer=effectiveSteer>0?1.5:-1.5;
-  var steerAmt=effectiveSteer*3.5*dt;
+  var effectiveSteer=this.tapSteer+joySteer;
+  if(Math.abs(effectiveSteer)>1)effectiveSteer=effectiveSteer>0?1:-1;
+  var steerAmt=effectiveSteer*2.0*dt;
   this.carX+=steerAmt;var roadHalf=ROAD_WIDTH*0.3;this.carX=Math.max(-roadHalf,Math.min(roadHalf,this.carX));
  var dw=window.innerWidth,dh=window.innerHeight;
   this.roadPosition+=this.driveSpeed*50*dt;this.driveDistance+=this.driveSpeed*dt;
@@ -243,7 +254,7 @@ Game.prototype._catchThief=function(t){
 
 Game.prototype._spawnCelebration=function(){
   var self=this;
-  for(var i=0;i<60;i++){(function(idx){setTimeout(function(){
+  for(var i=0;i<30;i++){(function(idx){setTimeout(function(){
     var x=Math.random()*WORLD_W,y=Math.random()*WORLD_H;
     var hue=Math.random()*360,sz=4+Math.random()*4;
     self.particles.push(new Particle(x,y,'hsl('+hue+',85%,65%)',2+Math.random()*2,sz,(Math.random()-0.5)*60,-Math.random()*50-20));}, idx*50)
@@ -298,11 +309,12 @@ Game.prototype._drawGarden=function(w,h){
   var gy=sh;ctx.fillStyle='#5a9e3a';ctx.fillRect(0,gy,w,h-gy);
   ctx.fillStyle='#c4a66a';ctx.fillRect(0,gy+20,w,15);ctx.fillStyle='#b89855';
   for(var x=0;x<w;x+=30){ctx.beginPath();ctx.arc(x+Math.random()*15,gy+27,3,0,Math.PI*2);ctx.fill()}
-  ctx.strokeStyle='#4d8a2f';ctx.lineWidth=1;for(var i=0;i<80;i++){
+  ctx.strokeStyle='#4d8a2f';ctx.lineWidth=1;for(var i=0;i<40;i++){
     var gx=((i*47+this.camera.x*0.3)%w),ggy=gy+40+((i*31)%(h-gy-80));
     ctx.beginPath();ctx.moveTo(gx,ggy);ctx.lineTo(gx+Math.sin(i)*3,ggy-6-Math.random()*4);ctx.stroke()}
-  var fc=['#ff6b8a','#ffaa44','#ff5555','#ffffff','#aa66ff'];for(var i=0;i<25;i++){
-    var fx=((i*97+this.camera.x*0.2)%w),fy=gy+50+((i*61)%(h-gy-100));
+  var fc=['#ff6b8a','#ffaa44','#ff5555','#ffffff','#aa66ff'];for(var i=0;i<12;i++){
+    var fi=this._gardenFlowers[i]||{i:i,yi:i};
+    var fx=((fi.i*97+this.camera.x*0.2)%w),fy=gy+50+((fi.yi*61)%(h-gy-100));
     ctx.beginPath();ctx.arc(fx,fy,3,0,Math.PI*2);ctx.fillStyle=fc[i%fc.length];ctx.fill();
     ctx.strokeStyle='#4d8a2f';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(fx,fy+3);ctx.lineTo(fx,fy+10);ctx.stroke()}
   ctx.fillStyle='#8B6914';ctx.fillRect(0,gy-2,w,5);
@@ -391,39 +403,71 @@ Game.prototype._drawDriveHUD=function(w,h){
 
 Game.prototype._drawDrivingMenu=function(w,h){
   var grad=ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,'#5a9e3a');grad.addColorStop(0.5,'#6abf2e');grad.addColorStop(1,'#8ed63f');
+  grad.addColorStop(0,'#1a2a4a');grad.addColorStop(0.5,'#2a4a7a');grad.addColorStop(1,'#1a3a5a');
   ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='#666';ctx.fillRect(w*0.25,h*0.35,w*0.5,h*0.4);
-  ctx.strokeStyle='#888';ctx.lineWidth=2;ctx.setLineDash([12,8]);
-  ctx.beginPath();ctx.moveTo(w*0.5,h*0.35);ctx.lineTo(w*0.5,h*0.75);ctx.stroke();ctx.setLineDash([]);
-  var ts=Math.min(36,w*0.08);ctx.font='bold '+ts+'px sans-serif';ctx.textAlign='center';
-  ctx.fillStyle='#FFD700';ctx.strokeStyle='#333';ctx.lineWidth=3;
-  ctx.strokeText('Vep\u0159\u00edkova j\u00edzda',w/2,h*0.18);ctx.fillText('Vep\u0159\u00edkova j\u00edzda',w/2,h*0.18);
-  var cy=h*0.45,bw2=Math.min(60,w*0.1);
-  ctx.font=(ts-4)+'px sans-serif';ctx.fillStyle='#fff';
-  ctx.fillText('\u25c0',w/2-bw2-30,cy+5);ctx.fillText('\u25b6',w/2+bw2+30,cy+5);
-  var typeNames={tractor:'Traktor',racing:'Z\u00e1vodn\u00ed auto',truck:'N\u00e1kladn\u00ed auto',bus:'Autobus'};
-  ctx.font='bold 20px sans-serif';ctx.fillStyle='#fff';ctx.fillText(typeNames[this.driveConfig.type],w/2,cy+45);
-  CarDraw.drawFromSide(ctx,this.driveConfig,w/2,cy,Math.min(1.3,w/380),0);
-  ctx.font='12px sans-serif';ctx.fillStyle='#ddd';ctx.fillText('Vyber vozidlo',w/2,cy+65);
-  var palY=h*0.58;ctx.font='bold 13px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';
-  ctx.fillText('Barevn\u00e9 sch\u00e9ma',w/2,palY-10);
-  var palType=this.driveConfig.type;
-  for(var si=0;si<6;si++){var sx=w/2-135+si*45,selected=si===this.driveConfig.paletteIndex;
-    ctx.beginPath();ctx.arc(sx+17,palY+17,16,0,Math.PI*2);
-    ctx.fillStyle=PALETTES[palType][si].body;if(selected){ctx.strokeStyle='#FFD700';ctx.lineWidth=3;ctx.stroke()}
-    ctx.fill();}
-  var wsY=h*0.7;var wsTypes=['standard','terrain','chrome'];var wsNames=['Standard','Ter\u00e9n','Chrome'];
-  ctx.font='bold 13px sans-serif';ctx.fillStyle='#fff';ctx.fillText('Pneumatiky',w/2,wsY-5);
-  for(var wi=0;wi<3;wi++){var wx=w/2-120+wi*80,selected=wi===0&&this.driveConfig.wheelStyle==='standard'||wi===1&&this.driveConfig.wheelStyle==='terrain'||wi===2&&this.driveConfig.wheelStyle==='chrome';
-    ctx.fillStyle='rgba(255,255,255,0.15)';this._rr(ctx,wx,wsY,65,30,6);ctx.fill();
-    if(selected){ctx.strokeStyle='#FFD700';ctx.lineWidth=2;this._rr(ctx,wx,wsY,65,30,6);ctx.stroke()}
-    ctx.font='11px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(wsNames[wi],wx+32,wsY+19)}
-  ctx.textAlign='center';var btnY=h*0.82;
-  ctx.fillStyle='#4477cc';this._rr(ctx,w/2-100,btnY,200,45,10);ctx.fill();
-  ctx.font='bold 16px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u2699\ufe0f Nastaven\u00ed',w/2,btnY+28);
-  ctx.fillStyle='#44aa44';this._rr(ctx,w/2-80,btnY+55,160,50,10);ctx.fill();
-  ctx.font='bold 20px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u25b6 Hr\u00e1t',w/2,btnY+87)
+  var ts=Math.min(34,w*0.07);
+  ctx.font='bold '+ts+'px sans-serif';ctx.textAlign='center';
+  ctx.fillStyle='#FFD700';ctx.strokeStyle='#000';ctx.lineWidth=3;
+  ctx.strokeText('\ud83d\ude9c Vep\u0159\u00edkova j\u00edzda',w/2,h*0.07);
+  ctx.fillText('\ud83d\ude9c Vep\u0159\u00edkova j\u00edzda',w/2,h*0.07);
+  var cardW=Math.min(w*0.85,380),cardH=105,cardX=w/2-cardW/2;
+  var vType=this.driveConfig.type,vTypes=['tractor','racing','truck','bus'];
+  var vNames={tractor:'\ud83d\uddd1\ufe0f Traktor',racing:'\ud83c\udfce\ufe0f Z\u00e1vodn\u00ed',truck:'\ud83d\ude9b N\u00e1kladn\u00ed',bus:'\ud83d\ude8c Autobus'};
+  var vColors={tractor:'#44aa44',racing:'#ee3333',truck:'#6688aa',bus:'#ddcc22'};
+  var cardY=h*0.12;
+  ctx.fillStyle='rgba(255,255,255,0.08)';this._rr(ctx,cardX,cardY,cardW,cardH,14);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;this._rr(ctx,cardX,cardY,cardW,cardH,14);ctx.stroke();
+  var navY=cardY+cardH/2;
+  ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';
+  ctx.fillText('\u25c0',cardX+22,navY+8);
+  ctx.fillText('\u25b6',cardX+cardW-22,navY+8);
+  var typeIdx=vTypes.indexOf(vType);
+  ctx.font='bold 18px sans-serif';ctx.fillStyle='#fff';
+  ctx.fillText(vNames[vType],w/2,navY+6);
+  var carY=h*0.32;
+  CarDraw.drawFromSide(ctx,this.driveConfig,w/2,carY,Math.min(1.1,w/400),0);
+  var colCardY=carY+55;
+  ctx.font='bold 13px sans-serif';ctx.fillStyle='rgba(255,255,255,0.6)';ctx.textAlign='center';
+  ctx.fillText('BARVA',w/2,colCardY);
+  var palType=this.driveConfig.type,palW=Math.min(50,cardW/7),palH=32;
+  var palStartX=w/2-((palW+8)*6)/2+4;
+  for(var si=0;si<6;si++){
+    var px=palStartX+si*(palW+8),selected=si===this.driveConfig.paletteIndex;
+    var pp=PALETTES[palType][si];
+    ctx.fillStyle='rgba(0,0,0,0.3)';this._rr(ctx,px-2,colCardY+4,palW+4,palH+4,8);ctx.fill();
+    ctx.fillStyle=pp.body;this._rr(ctx,px,colCardY,palW,palH,6);ctx.fill();
+    ctx.fillStyle=pp.accent;ctx.fillRect(px+2,colCardY+palH*0.55,palW-4,palH*0.42);
+    if(selected){ctx.strokeStyle='#FFD700';ctx.lineWidth=2.5;this._rr(ctx,px,colCardY,palW,palH,6);ctx.stroke();
+      ctx.fillStyle='#FFD700';ctx.font='bold 10px sans-serif';ctx.fillText('\u2713',px+palW/2,colCardY-4);
+    }else{ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;this._rr(ctx,px,colCardY,palW,palH,6);ctx.stroke()}
+  }
+  var wheelY=colCardY+palH+20;
+  ctx.font='bold 13px sans-serif';ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText('PNEUMATIKY',w/2,wheelY);
+  var wsTypes=['standard','terrain','chrome'];var wsNames=['\u25cb Standard','\u25cf Ter\u00e9n','\u25cb Chrome'];
+  var wsBtnW=Math.min(100,(cardW-30)/3),wsBtnH=42;
+  var wsStartX=w/2-((wsBtnW+12)*3)/2+6;
+  for(var wi=0;wi<3;wi++){
+    var wx=wsStartX+wi*(wsBtnW+12),selected=this.driveConfig.wheelStyle===wsTypes[wi];
+    if(selected){ctx.fillStyle='rgba(68,119,204,0.35)';ctx.strokeStyle='#4477cc';ctx.lineWidth=2}
+    else{ctx.fillStyle='rgba(255,255,255,0.08)';ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1}
+    this._rr(ctx,wx,wheelY,wsBtnW,wsBtnH,10);ctx.fill();ctx.stroke();
+    ctx.font='11px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';
+    ctx.fillText(wsNames[wi],wx+wsBtnW/2,wheelY+wsBtnH/2+4);
+    ctx.save();ctx.translate(wx+wsBtnW/2,wheelY+wsBtnH-14);ctx.fillStyle='#333';
+    ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=wi===1?'#555':'#888';ctx.beginPath();ctx.arc(0,0,wi===2?5:4,0,Math.PI*2);ctx.fill();
+    if(wi===1){ctx.fillStyle='#444';for(var wt=0;wt<8;wt++){var wa=(wt/8)*Math.PI*2;ctx.beginPath();ctx.arc(Math.cos(wa)*7,-4+Math.sin(wa)*7,1.5,0,Math.PI*2);ctx.fill()}}
+    ctx.restore();
+  }
+  ctx.textAlign='center';
+  var btnY=h*0.86;
+  ctx.fillStyle='rgba(255,255,255,0.1)';this._rr(ctx,w/2-110,btnY,220,42,10);ctx.fill();
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u2699\ufe0f Nastaven\u00ed',w/2,btnY+26);
+  var pulse=Math.sin(this.menuPulse)*2;
+  ctx.fillStyle='#44aa44';this._rr(ctx,w/2-90,btnY+52+pulse/2,180,52,12);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.15)';this._rr(ctx,w/2-90,btnY+52+pulse/2,180,25,12);ctx.fill();
+  ctx.font='bold 22px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u25b6  HR\u00c1T',w/2,btnY+52+pulse/2+34)
 };
 
 Game.prototype._drawDriveSettings=function(w,h){
