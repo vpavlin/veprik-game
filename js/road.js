@@ -4,7 +4,7 @@ var SEGMENT_LENGTH = 200;
 var ROAD_WIDTH = 2000;
 var LANES = 3;
 var CAMERA_HEIGHT = 1000;
-var CAMERA_DEPTH = 0.84;
+var CAMERA_DEPTH = 200;
 var DRAW_DISTANCE = 300;
 
 var COLORS = {
@@ -61,7 +61,7 @@ RoadMap.prototype.project = function(camZ, camH, camD) {
          this.segments[baseSegIdx].y) * basePercent;
 
     var cumulativeCurve = 0;
-    var maxY = 0;
+    var minY = Infinity;
     var prevY = playerY;
 
     for (var n = 0; n < DRAW_DISTANCE; n++) {
@@ -101,7 +101,7 @@ RoadMap.prototype.project = function(camZ, camH, camD) {
 
         if (seg.p1.scale > 0) {
             screenX = width / 2 + (seg.p1.x - camX) * seg.p1.scale;
-            screenY = height - (seg.p1.y - camH) * seg.p1.scale;
+            screenY = (camH - seg.p1.y) * seg.p1.scale + height / 2;
             screenW = seg.p1.w * seg.p1.scale;
         }
 
@@ -109,8 +109,8 @@ RoadMap.prototype.project = function(camZ, camH, camD) {
         seg._screenY = screenY;
         seg._screenW = screenW;
 
-        var projectedY = height - (seg.y - camH) * seg.p1.scale;
-        if (projectedY > maxY) maxY = projectedY;
+        var projectedY = (camH - seg.y) * seg.p1.scale + height / 2;
+        if (projectedY < minY) minY = projectedY;
 
         seg.sprites = [];
         seg.collectibles = [];
@@ -165,7 +165,7 @@ RoadMap.prototype.project = function(camZ, camH, camD) {
         }
     }
 
-    return {horizonY: maxY, baseScale: this.segments[baseSegIdx] ? this.segments[baseSegIdx].p1.scale : 0};
+    return {horizonY: minY, baseScale: this.segments[baseSegIdx] ? this.segments[baseSegIdx].p1.scale : 0};
 };
 
 function addCurve(roadMap, curve, startSeg, endSeg) {
@@ -277,12 +277,13 @@ function drawGround(ctx, w, h, horizonY) {
 }
 
 function drawSegment(ctx, baseX, baseY, baseW, depth, p1, p2, curve) {
-    var x1 = baseX + p1.x;
-    var y1 = p1.y;
-    var w1 = p1.w;
-    var x2 = baseX + p2.x;
-    var y2 = p2.y;
-    var w2 = p2.w;
+    var x1 = baseX;
+    var y1 = baseY;
+    var w1 = baseW;
+    var p2Scale = p2.scale || 0.001;
+    var x2 = baseX + (p2.x - p1.x) * p2Scale;
+    var y2 = (camH - p2.y) * p2Scale + height / 2;
+    var w2 = p2.w * p2Scale;
 
     var grassColor = (depth % 2 === 0) ? COLORS.GRASS_LIGHT : COLORS.GRASS_DARK;
     ctx.fillStyle = grassColor;
@@ -320,7 +321,7 @@ function drawPoly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
     ctx.fill();
 }
 
-function drawSprite(ctx, type, x, y, scale) {
+function drawSprite(ctx, type, x, y, scale, time) {
     var s = Math.max(1, scale * 80);
     if (type === 'tree') {
         ctx.fillStyle = COLORS.TREE_TRUNK;
@@ -417,50 +418,49 @@ function drawSprite(ctx, type, x, y, scale) {
 }
 
 function drawCollectible(ctx, type, x, y, scale, bobPhase) {
-    var s = Math.max(2, scale * 15);
-    var bob = Math.sin(bobPhase || 0) * 3 * scale;
+    var s = Math.max(1, scale * 40);
+    var bob = Math.sin(bobPhase || 0) * 5 * scale;
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
     ctx.ellipse(x, y + 2, s * 0.6, s * 0.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (type === 'carrot') {
-        ctx.fillStyle = '#FF8C00';
+        ctx.fillStyle = '#FF6600';
         ctx.beginPath();
-        ctx.arc(x, y - s + bob, s * 0.5, 0, Math.PI * 2);
+        ctx.arc(x, y - s + bob, s * 0.6, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#228B22';
-        ctx.lineWidth = Math.max(1, s * 0.15);
+        ctx.fillStyle = '#228B22';
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y - s * 1.5 + bob);
+        ctx.lineTo(x + 3, y - s * 1.5 + bob);
+        ctx.lineTo(x, y - s * 1.1 + bob);
+        ctx.fill();
+    } else if (type === 'cabbage') {
+        ctx.fillStyle = '#22AA22';
+        ctx.beginPath();
+        ctx.arc(x, y - s + bob, s * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#118811';
+        ctx.lineWidth = Math.max(1, s * 0.08);
+        ctx.beginPath();
+        ctx.arc(x, y - s + bob, s * 0.35, 0, Math.PI * 2);
+        ctx.stroke();
+    } else if (type === 'tomato') {
+        ctx.fillStyle = '#FF2222';
+        ctx.beginPath();
+        ctx.arc(x, y - s + bob, s * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#22AA22';
         ctx.beginPath();
         ctx.moveTo(x, y - s * 1.4 + bob);
-        ctx.lineTo(x, y - s * 0.6 + bob);
-        ctx.stroke();
-    } else if (type === 'cabbage') {
-        ctx.fillStyle = '#32CD32';
-        ctx.beginPath();
-        ctx.arc(x, y - s + bob, s * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#228B22';
-        ctx.lineWidth = Math.max(1, s * 0.06);
-        for (var cr = 0; cr < 3; cr++) {
-            ctx.beginPath();
-            ctx.arc(x, y - s + bob, s * (0.15 + cr * 0.12), 0, Math.PI * 2);
-            ctx.stroke();
-        }
-    } else if (type === 'tomato') {
-        ctx.fillStyle = '#FF4444';
-        ctx.beginPath();
-        ctx.arc(x, y - s + bob, s * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#32CD32';
-        ctx.beginPath();
-        ctx.moveTo(x, y - s * 1.35 + bob);
-        ctx.quadraticCurveTo(x + s * 0.2, y - s * 1.4 + bob, x + s * 0.15, y - s * 1.2 + bob);
+        ctx.lineTo(x + 5, y - s * 1.3 + bob);
+        ctx.lineTo(x + 3, y - s * 1.1 + bob);
         ctx.fill();
     } else if (type === 'potato') {
-        ctx.fillStyle = '#C4A46B';
+        ctx.fillStyle = '#B8860B';
         ctx.beginPath();
-        ctx.ellipse(x, y - s + bob, s * 0.5, s * 0.35, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y - s + bob, s * 0.55, s * 0.4, 0, 0, Math.PI * 2);
         ctx.fill();
     }
 }
@@ -508,7 +508,7 @@ function renderRoad(ctx, w, h, cx, cy, cz, roadMap, time) {
     var baseSegIdx = Math.floor(camZ / SEGMENT_LENGTH) % roadMap.segments.length;
     if (baseSegIdx < 0) baseSegIdx += roadMap.segments.length;
 
-    var maxY = horizonY;
+    var minY = horizonY;
     var x = 0;
     var dx = 0;
 
@@ -524,7 +524,7 @@ function renderRoad(ctx, w, h, cx, cy, cz, roadMap, time) {
         var clipped = false;
 
         var baseX = w / 2 + x * (seg.p1.scale || 0.001);
-        var baseY = seg.p1.y ? height - (seg.p1.y - camH) * (seg.p1.scale || 0.001) : maxY;
+        var baseY = (camH - seg.p1.y) * (seg.p1.scale || 0.001) + height / 2;
 
         drawSegment(ctx, baseX, baseY, seg.p1.w * (seg.p1.scale || 0.001),
                     n, seg.p1, seg.p2, seg.curve);
@@ -532,7 +532,7 @@ function renderRoad(ctx, w, h, cx, cy, cz, roadMap, time) {
         if (n < DRAW_DISTANCE - 5) {
             for (var si = 0; si < seg.sprites.length; si++) {
                 var spr = seg.sprites[si];
-                drawSprite(ctx, spr.type, spr.x, spr.y, spr.scale);
+                drawSprite(ctx, spr.type, spr.x, spr.y, spr.scale, time);
             }
 
             for (var ci2 = 0; ci2 < seg.collectibles.length; ci2++) {
@@ -546,8 +546,8 @@ function renderRoad(ctx, w, h, cx, cy, cz, roadMap, time) {
             }
         }
 
-        if (seg._screenY && seg._screenY < maxY) {
-            maxY = seg._screenY;
+        if (seg._screenY && seg._screenY > minY) {
+            minY = seg._screenY;
         }
     }
 
