@@ -1,5 +1,4 @@
 var WORLD_W=1100,WORLD_H=750;
-var DRIVE_ROAD_LENGTH=3000*200;
 
 function Game(){
   this.state='menu';this.veprik=null;this.thieves=[];this.obstacles=[];
@@ -11,13 +10,6 @@ function Game(){
   this._setupWorld();this._handleResize();this._setupInput();
   window.addEventListener('resize',this._handleResize.bind(this));
   requestAnimationFrame(this._loop.bind(this));
-  this.driveConfig={type:'tractor',paletteIndex:0,wheelStyle:'standard'};
-  this.driveTimer=90;this.driveSpeed=0;this.roadPosition=0;this.steerInput=0;
-  this.viewMode='behind';this.collectibles=[];this.obstaclesList=[];
-  this.goals=[];this.driveScore=0;this.driveDistance=0;
-  this.cameraOffset=new Vec();this.carX=0;this.roadMap=null;
-  this.accelerationMode='auto';this.touchAccel=false;
-  this.tapSteer=0;this.tapSteerTimer=0;
 }
 
 Game.prototype._setupWorld=function(){
@@ -55,26 +47,6 @@ Game.prototype._setupWorld=function(){
   for(var i=0;i<12;i++){this._gardenFlowers.push({i:(i*97)%1000,yi:(i*61)%1000})}
 };
 
-Game.prototype._setupDriveWorld=function(){
-  var seed=Math.floor(Math.random()*99999);
-  this.roadMap=generateRoad(seed);
-  this.collectibles=[];this.obstaclesList=[];this.goals=[];this.driveScore=0;this.driveDistance=0;
-  var vTypes=['carrot','cabbage','tomato','potato'];
-  for(var z=1500;z<this.roadMap.totalLength;z+=1500){
-    var t=vTypes[Math.floor(Math.random()*4)];
-    this.collectibles.push({type:t,worldZ:z,collected:false,offset:(Math.random()*2-1)*0.5});
-  }
-  for(var z=800;z<this.roadMap.totalLength;z+=800){
-    var oType=Math.random()>0.5?'rock':'puddle';
-    var side=(Math.random()*2-1)*0.4;
-    this.obstaclesList.push({type:oType,worldZ:z,hit:false,side:side});
-  }
-  var gTypes=vTypes.slice(0,2);
-  for(var gi=0;gi<gTypes.length;gi++){
-    this.goals.push({type:gTypes[gi],target:5,current:0,bonus:200});
-  }
-};
-
 Game.prototype._handleResize=function(){
   var dpr=window.devicePixelRatio||1;canvas.width=window.innerWidth*dpr;canvas.height=window.innerHeight*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -92,84 +64,32 @@ Game.prototype._setupInput=function(){
   canvas.addEventListener('touchmove',function(e){e.preventDefault();
     gp(e).forEach(function(t){self.joystick.handleMove(t.x,t.y,t.id)})});
   canvas.addEventListener('touchend',function(e){e.preventDefault();
-    gp(e).forEach(function(t){self.joystick.handleEnd(t.id)});
-    if(self.state==='playingDriving')self.steerInput=0});
-  canvas.addEventListener('touchcancel',function(e){e.preventDefault();self.joystick.handleEnd('cancelled');
-    if(self.state==='playingDriving')self.steerInput=0});
-  canvas.addEventListener('mouseup',function(){md=false;if(self.state==='playingDriving'){self.steerInput=0;self.tapSteer=0;self.tapSteerTimer=0}});
+    gp(e).forEach(function(t){self.joystick.handleEnd(t.id)})});
+  canvas.addEventListener('touchcancel',function(e){e.preventDefault();self.joystick.handleEnd('cancelled')});
   var md=false;
   canvas.addEventListener('mousedown',function(e){md=true;self.joystick.handleStart(e.clientX,e.clientY,'mouse');self._handleTap({x:e.clientX,y:e.clientY})});
   canvas.addEventListener('mousemove',function(e){if(md&&self.joystick)self.joystick.handleMove(e.clientX,e.clientY,'mouse')});
-  canvas.addEventListener('mouseup',function(){md=false;if(self.state==='playingDriving')self.steerInput=0});
+  canvas.addEventListener('mouseup',function(){md=false});
 };
 
 Game.prototype._handleTap=function(tap){
   var w=window.innerWidth,h=window.innerHeight;
   if(this.state==='menu'){
-    var py=h*0.1,ph=h*0.6,bw=Math.min(200,w*0.42),bh=45,gap=15;
-    this.bwPad=gap/2;
+    var py=h*0.1,ph=h*0.6,bw=Math.min(200,w*0.42),bh=55,gap=15;
     var gy1=py+ph-60;
     if(tap.y>gy1&&tap.y<gy1+bh){
-      if(tap.x<w/2-this.bwPad)this.state='playing';
-      else this.state='drivingMenu';
-  }
-   return;
- }
- if(this.state==='drivingMenu'){
-    var cy=h*0.45,bw2=Math.min(60,w*0.1);
-    if(tap.y>cy-60&&tap.y<cy+60){
-      var types=['tractor','racing','truck','bus'];var ci=types.indexOf(this.driveConfig.type);
-      if(tap.x<w/2-bw2-10)this.driveConfig.type=types[(ci-1+types.length)%types.length];
-      else if(tap.x>w/2+bw2+10)this.driveConfig.type=types[(ci+1)%types.length];
-    }
-    var swY=h*0.58;
-    for(var si=0;si<6;si++){
-      var sx=w/2-135+si*45;
-      if(tap.x>sx&&tap.x<sx+35&&tap.y>swY&&tap.y<swY+35)this.driveConfig.paletteIndex=si;
-    }
-    var wsY=h*0.7;var wsTypes=['standard','terrain','chrome'];
-    for(var wi=0;wi<3;wi++){
-      var wx=w/2-120+wi*80;
-      if(tap.x>wx&&tap.x<wx+65&&tap.y>wsY&&tap.y<wsY+30)this.driveConfig.wheelStyle=wsTypes[wi];
-    }
-    if(tap.y>h*0.82&&tap.y<h*0.82+45&&tap.x>w/2-100&&tap.x<w/2+100){this.state='drivingSettings';return}
-    if(tap.y>h*0.9&&tap.y<h*0.9+50){this._startDriving();return}
-    return;
-  }
-  if(this.state==='drivingSettings'){
-    var ay=h*0.4;if(tap.y>ay-20&&tap.y<ay+60)this.accelerationMode=this.accelerationMode==='auto'?'touch':'auto';
-    var cy=h*0.55;if(tap.y>cy-20&&tap.y<cy+60)this.viewMode=this.viewMode==='behind'?'cockpit':'behind';
-    if(tap.y>h*0.8&&tap.y<h*0.8+45){this.state='drivingMenu'}
-    return;
-  }
-  if(this.state==='playingDriving'){
-    var camBtnX=w-70,camBtnY=60,camBtnS=20;
-    if(tap.x>camBtnX-camBtnS&&tap.x<camBtnX+camBtnS&&tap.y>camBtnY-camBtnS&&tap.y<camBtnY+camBtnS){
-      this.viewMode=this.viewMode==='behind'?'cockpit':'behind';return;
-    }
-    if(this.joystick&&this.joystick.active){
-      this.steerInput=this.joystick.dx;
-    }else{
-      this.tapSteer=0;this.tapSteerTimer=0.8;
-      if(tap.x<w/2)this.tapSteer=-0.8;else this.tapSteer=0.8;
+      this.state='playing';
     }
     return;
   }
-  if(this.state==='drivingComplete'){this.state='drivingMenu'}
-};
-
-Game.prototype._startDriving=function(){
-  this.state='playingDriving';this.driveTimer=90;this.driveSpeed=80;this.roadPosition=0;
-  this.carX=0;this.steerInput=0;this.gameTime=0;this._setupDriveWorld();this.particles=[];
+  if(this.state==='drivingComplete'){this.state='menu'}
 };
 
 Game.prototype._update=function(dt){
   this.menuPulse+=dt*2;this.gameTime+=dt;
-  if(this.state==='playingDriving'){this._updateDriving(dt);return}
-  if(this.state==='drivingMenu'||this.state==='drivingSettings'){this.menuPulse+=dt*2;return}
   if(this.state!=='playing')return;
   var w=window.innerWidth,h=window.innerHeight;
-  if(this.joystick)this.joystick.resetPos(w*0.15,h*0.78);
+  if(this.joystick)this.joystick.resetPos(w*0.12,h*0.82);
   if(this.stealAlertTimer>0)this.stealAlertTimer-=dt;
   if(this.thiefSpawnedCount<this.thiefSpawnQueue.length){
     this.thiefSpawnTimer+=dt;
@@ -203,47 +123,6 @@ Game.prototype._update=function(dt){
   for(var i=0;i<this.thieves.length;i++){var t=this.thieves[i];
     if(t.state==='stealing'&&this.stealAlertTimer<=0){this.stealAlertText=t.name+' krade!';this.stealAlertTimer=2;break}}
 };
-
-Game.prototype._updateDriving=function(dt){
-  this.driveTimer-=dt;if(this.driveTimer<=0){this.state='drivingComplete';return}
-  var speedCurve=Math.min(120,60+(90-Math.max(0,this.driveTimer))*0.3);
-  if(this.accelerationMode==='touch')speedCurve+=20;
-  this.driveSpeed+=(speedCurve-this.driveSpeed)*3*dt;
-  if(this.tapSteerTimer>0){this.tapSteerTimer-=dt;this.tapSteer*=Math.pow(0.3,dt)}
-  else{this.tapSteer=0}
-  var joySteer=0;
-  if(this.joystick&&this.joystick.active){joySteer=this.joystick.dx}
-  var effectiveSteer=this.tapSteer+joySteer;
-  if(Math.abs(effectiveSteer)>1)effectiveSteer=effectiveSteer>0?1:-1;
-  var steerAmt=effectiveSteer*150*dt;
-  this.carX+=steerAmt;var roadHalf=ROAD_WIDTH*0.3;this.carX=Math.max(-roadHalf,Math.min(roadHalf,this.carX));
- var dw=window.innerWidth,dh=window.innerHeight;
-  this.roadPosition+=this.driveSpeed*50*dt;this.driveDistance+=this.driveSpeed*dt;
-  var carSegZ=this.roadPosition%this.roadMap.totalLength;
-  for(var i=0;i<this.collectibles.length;i++){
-    var c=this.collectibles[i];if(c.collected)continue;
-    var cz=c.worldZ%this.roadMap.totalLength;var dz=Math.abs(carSegZ-cz);
-    if(dz<SEGMENT_LENGTH*3){
-        if(Math.abs(this.carX-c.offset*300)<80){
-          c.collected=true;this.driveScore+=10;
-          for(var p=0;p<8;p++)this.particles.push(new Particle(dw/2+(Math.random()-0.5)*dw*0.4,dh*0.7+Math.random()*dh*0.1,c.type==='carrot'?'#FF8C00':'#44cc44',0.5+Math.random(),3,(Math.random()-0.5)*80,-Math.random()*60));
-          for(var g=0;g<this.goals.length;g++){if(this.goals[g].type===c.type){this.goals[g].current++;
-            if(this.goals[g].current>=this.goals[g].target)this.driveScore+=this.goals[g].bonus}}}
-     }
-    }
-    for(var i=0;i<this.obstaclesList.length;i++){
-      var o=this.obstaclesList[i];if(o.hit)continue;
-      var oz=o.worldZ%this.roadMap.totalLength;var dz2=Math.abs(carSegZ-oz);
-      if(dz2<SEGMENT_LENGTH*3){
-        var sideX=o.side*300;
-        if(Math.abs(this.carX-sideX)<60){o.hit=true;this.driveSpeed*=0.5;
-          for(var p=0;p<12;p++)this.particles.push(new Particle(dw/2+(Math.random()-0.5)*dw*0.3,dh*0.7+Math.random()*dh*0.1,'#888',0.8+Math.random(),4,(Math.random()-0.5)*100,-Math.random()*60))}
-      }
-    }
-   this.cameraOffset.x+=(this.carX*0.3-this.cameraOffset.x)*3*dt;
-   for(var i=this.particles.length-1;i>=0;i--){this.particles[i].update(dt);if(this.particles[i].life<=0)this.particles.splice(i,1)}
-   if(Math.random()<dt*3){this.particles.push(new Particle(window.innerWidth/2+(Math.random()-0.5)*window.innerWidth,window.innerHeight*0.5+Math.random()*window.innerHeight*0.4,'rgba(255,255,255,0.4)',0.3+Math.random(),1,(Math.random()-0.5)*150,-this.driveSpeed*2))}
- };
 
 Game.prototype._catchThief=function(t){
   if(t.state==='caught')return;t.state='caught';t.vel=new Vec();this.veprik.caughtCount++;this.score+=100;this.veprik.catchAnim=1.5;
@@ -280,9 +159,6 @@ Game.prototype._setupNextWave=function(){
 Game.prototype._draw=function(){
   var w=window.innerWidth,h=window.innerHeight;ctx.clearRect(0,0,w,h);
   if(this.state==='menu'){this._drawMenu(w,h);return}
-  if(this.state==='playingDriving'){this._drawDrivingScene(w,h);this._drawDriveHUD(w,h);return}
-  if(this.state==='drivingMenu'){this._drawDrivingMenu(w,h);return}
-  if(this.state==='drivingSettings'){this._drawDriveSettings(w,h);return}
   if(this.state==='drivingComplete'){this._drawDrivingComplete(w,h);return}
   this._drawGarden(w,h);var ds=[];
   for(var i=0;i<this.vegetables.length;i++){var v=this.vegetables[i];if(!v.collected)ds.push({y:v.y,d:bindMethod(v,'draw',ctx,this.camera.x,this.camera.y)})}
@@ -366,170 +242,14 @@ Game.prototype._drawCelebrationOverlay=function(w,h){
   ctx.fillText('Klepn\u011bte pro novou hru',w/2,cy+50);
 };
 
-Game.prototype._drawDrivingScene=function(w,h){
-  var horizonY=h*0.45;
-  if(this.viewMode==='cockpit'){
-    renderRoad(ctx,w,h,this.carX,650,this.roadPosition,this.roadMap,this.gameTime);
-    ctx.save();CarDraw.drawInCar(ctx,this.driveConfig,w,h,this.steerInput*0.3);ctx.restore();return;
-  }
-  renderRoad(ctx,w,h,this.carX,650,this.roadPosition,this.roadMap,this.gameTime);
-  var carScreenX=w/2+this.cameraOffset.x*1.5;
-  var carScreenY=h*0.75;
-  var carScale=Math.min(0.9,w/800);
-  ctx.save();CarDraw.drawFromBehind(ctx,this.driveConfig,carScreenX,carScreenY,carScale,this.steerInput*0.3);ctx.restore();
-  for(var i=0;i<this.particles.length;i++){var p=this.particles[i];p.draw(ctx)}
-  if(this.joystick)this.joystick.draw(ctx);
-};
-
-Game.prototype._drawDriveHUD=function(w,h){
-  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(0,0,w,45);
-  ctx.font='bold 16px sans-serif';ctx.textAlign='left';ctx.fillStyle='#FFD700';
-  ctx.fillText('\u2b50 '+this.driveScore,12,28);
-  var mins=Math.floor(this.driveTimer/60),secs=Math.floor(this.driveTimer%60);
-  ctx.textAlign='center';ctx.fillStyle=this.driveTimer<15?'#ff4444':'#fff';
-  ctx.fillText(mins+':'+(secs<10?'0':'')+secs,w/2,28);
-  var spd=Math.floor(this.driveSpeed*1.5);ctx.textAlign='right';ctx.fillStyle='#aaa';
-  ctx.fillText(spd+' km/h',w-65,28);
-  ctx.font='14px sans-serif';ctx.textAlign='left';ctx.fillStyle='#ddd';
-  var iconY=h-30;var ix=15;
-  for(var g=0;g<this.goals.length;g++){var gl=this.goals[g];
-    var emoji=gl.type==='carrot'?'\ud83e\udd55':gl.type==='cabbage'?'\ud83e\udd6c':gl.type==='tomato'?'\ud83c\udf45':'\ud83e\udd54';
-    ctx.fillText(emoji+' '+gl.current+'/'+gl.target,ix,iconY);ix+=100}
-  var camBtnX=w-70,camBtnY=60;ctx.fillStyle='rgba(255,255,255,0.3)';
-  this._rr(ctx,camBtnX-20,camBtnY-20,40,40,8);ctx.fill();
-  ctx.font='18px sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';
-  ctx.fillText(this.viewMode==='behind'?'\ud83d\udd0d':'\ud83d\ude97',camBtnX,camBtnY+4);
-};
-
-Game.prototype._drawDrivingMenu=function(w,h){
-  var grad=ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,'#1a2a4a');grad.addColorStop(0.5,'#2a4a7a');grad.addColorStop(1,'#1a3a5a');
-  ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-  var ts=Math.min(34,w*0.07);
-  ctx.font='bold '+ts+'px sans-serif';ctx.textAlign='center';
-  ctx.fillStyle='#FFD700';ctx.strokeStyle='#000';ctx.lineWidth=3;
-  ctx.strokeText('\ud83d\ude9c Vep\u0159\u00edkova j\u00edzda',w/2,h*0.07);
-  ctx.fillText('\ud83d\ude9c Vep\u0159\u00edkova j\u00edzda',w/2,h*0.07);
-  var cardW=Math.min(w*0.85,380),cardH=105,cardX=w/2-cardW/2;
-  var vType=this.driveConfig.type,vTypes=['tractor','racing','truck','bus'];
-  var vNames={tractor:'\ud83d\uddd1\ufe0f Traktor',racing:'\ud83c\udfce\ufe0f Z\u00e1vodn\u00ed',truck:'\ud83d\ude9b N\u00e1kladn\u00ed',bus:'\ud83d\ude8c Autobus'};
-  var vColors={tractor:'#44aa44',racing:'#ee3333',truck:'#6688aa',bus:'#ddcc22'};
-  var cardY=h*0.12;
-  ctx.fillStyle='rgba(255,255,255,0.08)';this._rr(ctx,cardX,cardY,cardW,cardH,14);ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;this._rr(ctx,cardX,cardY,cardW,cardH,14);ctx.stroke();
-  var navY=cardY+cardH/2;
-  ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';
-  ctx.fillText('\u25c0',cardX+22,navY+8);
-  ctx.fillText('\u25b6',cardX+cardW-22,navY+8);
-  var typeIdx=vTypes.indexOf(vType);
-  ctx.font='bold 18px sans-serif';ctx.fillStyle='#fff';
-  ctx.fillText(vNames[vType],w/2,navY+6);
-  var carY=h*0.32;
-  CarDraw.drawFromSide(ctx,this.driveConfig,w/2,carY,Math.min(1.1,w/400),0);
-  var colCardY=carY+55;
-  ctx.font='bold 13px sans-serif';ctx.fillStyle='rgba(255,255,255,0.6)';ctx.textAlign='center';
-  ctx.fillText('BARVA',w/2,colCardY);
-  var palType=this.driveConfig.type,palW=Math.min(50,cardW/7),palH=32;
-  var palStartX=w/2-((palW+8)*6)/2+4;
-  for(var si=0;si<6;si++){
-    var px=palStartX+si*(palW+8),selected=si===this.driveConfig.paletteIndex;
-    var pp=PALETTES[palType][si];
-    ctx.fillStyle='rgba(0,0,0,0.3)';this._rr(ctx,px-2,colCardY+4,palW+4,palH+4,8);ctx.fill();
-    ctx.fillStyle=pp.body;this._rr(ctx,px,colCardY,palW,palH,6);ctx.fill();
-    ctx.fillStyle=pp.accent;ctx.fillRect(px+2,colCardY+palH*0.55,palW-4,palH*0.42);
-    if(selected){ctx.strokeStyle='#FFD700';ctx.lineWidth=2.5;this._rr(ctx,px,colCardY,palW,palH,6);ctx.stroke();
-      ctx.fillStyle='#FFD700';ctx.font='bold 10px sans-serif';ctx.fillText('\u2713',px+palW/2,colCardY-4);
-    }else{ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;this._rr(ctx,px,colCardY,palW,palH,6);ctx.stroke()}
-  }
-  var wheelY=colCardY+palH+20;
-  ctx.font='bold 13px sans-serif';ctx.fillStyle='rgba(255,255,255,0.6)';
-  ctx.fillText('PNEUMATIKY',w/2,wheelY);
-  var wsTypes=['standard','terrain','chrome'];var wsNames=['\u25cb Standard','\u25cf Ter\u00e9n','\u25cb Chrome'];
-  var wsBtnW=Math.min(100,(cardW-30)/3),wsBtnH=42;
-  var wsStartX=w/2-((wsBtnW+12)*3)/2+6;
-  for(var wi=0;wi<3;wi++){
-    var wx=wsStartX+wi*(wsBtnW+12),selected=this.driveConfig.wheelStyle===wsTypes[wi];
-    if(selected){ctx.fillStyle='rgba(68,119,204,0.35)';ctx.strokeStyle='#4477cc';ctx.lineWidth=2}
-    else{ctx.fillStyle='rgba(255,255,255,0.08)';ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1}
-    this._rr(ctx,wx,wheelY,wsBtnW,wsBtnH,10);ctx.fill();ctx.stroke();
-    ctx.font='11px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';
-    ctx.fillText(wsNames[wi],wx+wsBtnW/2,wheelY+wsBtnH/2+4);
-    ctx.save();ctx.translate(wx+wsBtnW/2,wheelY+wsBtnH-14);ctx.fillStyle='#333';
-    ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=wi===1?'#555':'#888';ctx.beginPath();ctx.arc(0,0,wi===2?5:4,0,Math.PI*2);ctx.fill();
-    if(wi===1){ctx.fillStyle='#444';for(var wt=0;wt<8;wt++){var wa=(wt/8)*Math.PI*2;ctx.beginPath();ctx.arc(Math.cos(wa)*7,-4+Math.sin(wa)*7,1.5,0,Math.PI*2);ctx.fill()}}
-    ctx.restore();
-  }
-  ctx.textAlign='center';
-  var btnY=h*0.86;
-  ctx.fillStyle='rgba(255,255,255,0.1)';this._rr(ctx,w/2-110,btnY,220,42,10);ctx.fill();
-  ctx.font='bold 16px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u2699\ufe0f Nastaven\u00ed',w/2,btnY+26);
-  var pulse=Math.sin(this.menuPulse)*2;
-  ctx.fillStyle='#44aa44';this._rr(ctx,w/2-90,btnY+52+pulse/2,180,52,12);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.15)';this._rr(ctx,w/2-90,btnY+52+pulse/2,180,25,12);ctx.fill();
-  ctx.font='bold 22px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u25b6  HR\u00c1T',w/2,btnY+52+pulse/2+34)
-};
-
-Game.prototype._drawDriveSettings=function(w,h){
-  var grad=ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0,'#4a8e2a');grad.addColorStop(1,'#7abf3e');
-  ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-  var ts=Math.min(30,w*0.06);ctx.font='bold '+ts+'px sans-serif';ctx.textAlign='center';
-  ctx.fillStyle='#FFD700';ctx.strokeStyle='#333';ctx.lineWidth=2;
-  ctx.strokeText('Nastaven\u00ed',w/2,h*0.15);ctx.fillText('Nastaven\u00ed',w/2,h*0.15);
-  var cardY=h*0.3,cardH=80,cardW=Math.min(w-60,350);
-  ctx.fillStyle='rgba(0,0,0,0.3)';this._rr(ctx,w/2-cardW/2,cardY,cardW,cardH,10);ctx.fill();
-  ctx.font='bold 18px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='left';
-  ctx.fillText('Zp\u016fsob zrychlov\u00e1n\u00ed',w/2-cardW/2+20,cardY+30);
-  var toggleX=w/2-cardW/2+20,toggleW=cardW-40;
-  ctx.font='bold 16px sans-serif';ctx.textAlign='center';
-  var autoOn=this.accelerationMode==='auto',touchOn=!autoOn;
-  if(autoOn){ctx.fillStyle='#4477cc'}else{ctx.fillStyle='rgba(255,255,255,0.2)'}
-  this._rr(ctx,toggleX,cardY+45,toggleW/2-3,30,6);ctx.fill();
-  ctx.fillStyle='#fff';ctx.fillText('Auto',toggleX+toggleW/4-10,cardY+65);
-  if(touchOn){ctx.fillStyle='#ff8844'}else{ctx.fillStyle='rgba(255,255,255,0.2)'}
-  this._rr(ctx,toggleX+toggleW/2+3,cardY+45,toggleW/2-3,30,6);ctx.fill();
-  ctx.fillStyle='#fff';ctx.fillText('Dotyk',toggleX+toggleW*3/4-10,cardY+65);
-  var camY=h*0.55;
-  ctx.fillStyle='rgba(0,0,0,0.3)';this._rr(ctx,w/2-cardW/2,camY,cardW,cardH,10);ctx.fill();
-  ctx.font='bold 18px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='left';
-  ctx.fillText('Pohled kamery',w/2-cardW/2+20,camY+30);
-  var camToggleX=w/2-cardW/2+20,camToggleW=cardW-40;
-  ctx.font='bold 16px sans-serif';ctx.textAlign='center';
-  var behindOn=this.viewMode==='behind',cockpitOn=!behindOn;
-  if(behindOn){ctx.fillStyle='#4477cc'}else{ctx.fillStyle='rgba(255,255,255,0.2)'}
-  this._rr(ctx,camToggleX,camY+45,camToggleW/2-3,30,6);ctx.fill();
-  ctx.fillStyle='#fff';ctx.fillText('Za vozidlem',camToggleX+camToggleW/4-12,camY+65);
-  if(cockpitOn){ctx.fillStyle='#ff8844'}else{ctx.fillStyle='rgba(255,255,255,0.2)'}
-  this._rr(ctx,camToggleX+camToggleW/2+3,camY+45,camToggleW/2-3,30,6);ctx.fill();
-  ctx.fillStyle='#fff';ctx.fillText('Z kokpitu',camToggleX+camToggleW*3/4-10,camY+65);
-  var backY=h*0.8;
-  ctx.fillStyle='#888';this._rr(ctx,w/2-80,backY,160,45,10);ctx.fill();
-  ctx.font='bold 18px sans-serif';ctx.fillStyle='#fff';ctx.fillText('\u25c0 Zp\u011bt',w/2,backY+29)
-};
-
 Game.prototype._drawDrivingComplete=function(w,h){
-  renderRoad(ctx,w,h,this.carX,650,this.roadPosition,this.roadMap,this.gameTime);
-  var horizonY=h*0.45;
-  if(this.viewMode==='cockpit'){CarDraw.drawInCar(ctx,this.driveConfig,w,h,0)}
-  else{var carScale=Math.min(1.2,w/600);CarDraw.drawFromBehind(ctx,this.driveConfig,w/2+this.cameraOffset.x*1.5,h*0.75,carScale,0)}
-  for(var i=0;i<this.particles.length;i++){var p=this.particles[i];p.draw(ctx)}
   ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,w,h);
   var cy=h/2;var ts=Math.min(34,w*0.07);ctx.font='bold '+ts+'px sans-serif';ctx.textAlign='center';
   ctx.fillStyle='#FFD700';ctx.strokeStyle='#333';ctx.lineWidth=3;
-  ctx.strokeText('J\u00edzda dokon\u010dena!',w/2,cy-55);ctx.fillText('J\u00edzda dokon\u010dena!',w/2,cy-55);
-  ctx.font='bold 22px sans-serif';ctx.fillStyle='#fff';ctx.fillText('Sk\u00f3re: '+this.driveScore+' \u2b50',w/2,cy-15);
-  var dist=Math.floor(this.driveDistance*10);ctx.font='16px sans-serif';ctx.fillStyle='#ddd';
-  ctx.fillText('Vzd\u00e1lenost: '+dist+' m',w/2,cy+15);
-  ctx.font='16px sans-serif';var ix=w/2;
-  for(var g=0;g<this.goals.length;g++){var gl=this.goals[g];
-    var emoji=gl.type==='carrot'?'\ud83e\udd55':gl.type==='cabbage'?'\ud83e\udd6c':gl.type==='tomato'?'\ud83c\udf45':'\ud83e\udd54';
-    ctx.fillText(emoji+' '+gl.current,ix+g*50-75,cy+45)}
-  var collected=this.collectibles.filter(function(c){return c.collected}).length;
-  ctx.font='14px sans-serif';ctx.fillStyle='#aaa';
-  ctx.fillText('Celkem sb\u00edreno: '+collected+'/'+this.collectibles.length,w/2,cy+70);
+  ctx.strokeText('Vlna dokon\u010dena!',w/2,cy-55);ctx.fillText('Vlna dokon\u010dena!',w/2,cy-55);
+  ctx.font='bold 22px sans-serif';ctx.fillStyle='#fff';ctx.fillText('Sk\u00f3re: '+this.score+' \u2b50',w/2,cy-15);
   ctx.font='bold 16px sans-serif';ctx.fillStyle='#FFD700';
-  ctx.fillText('Klepni pro novou j\u00edzdu',w/2,cy+105)
+  ctx.fillText('Klepni pro novou hru',w/2,cy+40)
 };
 
 Game.prototype._drawMenu=function(w,h){
@@ -571,17 +291,11 @@ Game.prototype._drawMenu=function(w,h){
   ctx.fillText('\ud83c\udfae Ovl\u00e1dejte Vep\u0159\u00edka joystickem',w/2,iy);
   ctx.fillText('\ud83e\udd8a Chy\u0165te li\u0161ku, zaj\u00edce a my\u0161',w/2,iy+20);
   ctx.fillText('\ud83e\udd55 Hl\u00eddajte zahradu p\u0159ed zlod\u011bji!',w/2,iy+40);
-  var bw=Math.min(180,w*0.42),bh=45,gap=15;
-  this.bwPad=gap/2;
-  var gx1=w/2-bw-gap/2,gy1=py+ph-60;
-  var pulse=Math.sin(this.menuPulse)*3;ctx.fillStyle='#cc4444';this._rr(ctx,gx1-pulse/2,gy1-pulse/2,bw+pulse,bh+pulse,10);ctx.fill();
-  ctx.strokeStyle='#aa2222';ctx.lineWidth=2;this._rr(ctx,gx1-pulse/2,gy1-pulse/2,bw+pulse,bh+pulse,10);ctx.stroke();
-  ctx.font='bold '+Math.min(15,w*0.032)+'px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';
-  ctx.fillText('\ud83d\udc37 Zahrada',w/2-bw/2-gap/4,gy1+bh/2+6);
-  var gx2=w/2+gap/2;
-  ctx.fillStyle='#ee9922';this._rr(ctx,gx2-pulse/2,gy1-pulse/2,bw+pulse,bh+pulse,10);ctx.fill();
-  ctx.strokeStyle='#cc7700';ctx.lineWidth=2;this._rr(ctx,gx2-pulse/2,gy1-pulse/2,bw+pulse,bh+pulse,10);ctx.stroke();
-  ctx.fillStyle='#fff';ctx.fillText('\ud83d\ude9c J\u00edzda',gx2+bw/2,gy1+bh/2+6)
+  var bw=Math.min(200,w*0.5),bh=55;
+  var pulse=Math.sin(this.menuPulse)*3;ctx.fillStyle='#cc4444';this._rr(ctx,w/2-bw/2-pulse/2,py+ph-60-pulse/2,bw+pulse,bh+pulse,12);ctx.fill();
+  ctx.strokeStyle='#aa2222';ctx.lineWidth=2;this._rr(ctx,w/2-bw/2-pulse/2,py+ph-60-pulse/2,bw+pulse,bh+pulse,12);ctx.stroke();
+  ctx.font='bold '+Math.min(18,w*0.04)+'px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';
+  ctx.fillText('\ud83d\udc37  HR\u00c1T',w/2,py+ph-60+bh/2+6);
 };
 
 Game.prototype._rr=function(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);
