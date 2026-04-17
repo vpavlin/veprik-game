@@ -215,7 +215,7 @@ Game.prototype._updateDriving=function(dt){
   if(this.joystick&&this.joystick.active){joySteer=this.joystick.dx}
   var effectiveSteer=this.tapSteer+joySteer;
   if(Math.abs(effectiveSteer)>1)effectiveSteer=effectiveSteer>0?1:-1;
-  var steerAmt=effectiveSteer*2.0*dt;
+  var steerAmt=effectiveSteer*150*dt;
   this.carX+=steerAmt;var roadHalf=ROAD_WIDTH*0.3;this.carX=Math.max(-roadHalf,Math.min(roadHalf,this.carX));
  var dw=window.innerWidth,dh=window.innerHeight;
   this.roadPosition+=this.driveSpeed*50*dt;this.driveDistance+=this.driveSpeed*dt;
