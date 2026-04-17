@@ -75,7 +75,8 @@ Game.prototype._setupDriveWorld=function(){
 Game.prototype._handleResize=function(){
   var dpr=window.devicePixelRatio||1;canvas.width=window.innerWidth*dpr;canvas.height=window.innerHeight*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  this.joystick=new Joystick(window.innerWidth*0.15,window.innerHeight*0.78,Math.min(55,window.innerWidth*0.1));
+  var joyR=Math.max(50,Math.min(70,window.innerWidth*0.12));
+  this.joystick=new Joystick(window.innerWidth*0.12,window.innerHeight*0.82,joyR);
 };
 
 Game.prototype._setupInput=function(){
@@ -365,6 +366,7 @@ Game.prototype._drawDrivingScene=function(w,h){
   var carScale=Math.min(0.9,w/800);
   ctx.save();CarDraw.drawFromBehind(ctx,this.driveConfig,carScreenX,carScreenY,carScale,this.steerInput*0.3);ctx.restore();
   for(var i=0;i<this.particles.length;i++){var p=this.particles[i];p.draw(ctx)}
+  if(this.joystick)this.joystick.draw(ctx);
 };
 
 Game.prototype._drawDriveHUD=function(w,h){

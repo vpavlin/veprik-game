@@ -418,7 +418,7 @@ function drawSprite(ctx, type, x, y, scale, time) {
 }
 
 function drawCollectible(ctx, type, x, y, scale, bobPhase) {
-    var s = Math.max(1, scale * 40);
+    var s = Math.max(25, scale * 200);
     var bob = Math.sin(bobPhase || 0) * 5 * scale;
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();

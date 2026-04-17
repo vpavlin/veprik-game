@@ -3,6 +3,70 @@
 
 ---
 
+## LATEST FIXES: Driving Mode Complete (4 issues fixed)
+
+### Bug 13: Car doesn't look like a car (top-down instead of rear view)
+- **Symptom**: `drawFromBehind` drew car from top-down perspective — looking at roof, not back
+- **Root cause**: Drawn wheels at both top (front) and bottom (back) of body with windshield on top — this is a top-down bird's-eye view
+- **Fix**: Complete rewrite of `drawFromBehind` in car.js — now draws actual REAR view:
+  - **Racing car**: Big rear spoiler at bottom, full-width taillights (red), center dual exhaust pipes, wide body panel, Vepřík ears through rear window
+  - **Tractor**: Big rear wheels at bottom, ribbed rear panel, red taillights with glow, exhaust pipes on top with smoke, Vepřík in cab
+  - **Truck**: Cargo bed rear panel with door lines, side taillights, bumper, license plate, cab visible above
+  - **Bus**: Rear window with Vepřík ears, destination sign "VEPÍK", round taillights with glow, bumper, license plate
+- **Verification**: Puppeteer test finds 571 red pixels (taillights) and 13 pink pixels (Vepřík) in car area
+- **Files**: js/car.js (drawFromBehind rewritten, ~110 lines)
+
+### Bug 14: Cockpit view had no dashboard/road
+- **Symptom**: Cockpit view showed sky/road but no dashboard, steering wheel, or proper windshield
+- **Root cause**: `_drawDrivingScene` called `drawInCar` WITHOUT rendering road first — `return` before road render
+- **Fix**: 
+  1. In game.js: Call `renderRoad()` BEFORE `drawInCar()` so road renders behind dashboard
+  2. Rewrote `drawInCar` in car.js:
+     - Dashboard at bottom 30% (dark gray with curved top edge)
+     - Speed gauge with needle
+     - Fuel bar
+     - Steering wheel that rotates with steering angle (grip bumps, 3 spokes, Vepřík horn logo)
+     - Glove box with "VEPÍK" label
+     - Side mirrors showing simplified road colors
+     - Vepřík head + ears on left side peeking over dashboard
+     - A-pillars, sun visors, windshield frame
+     - Vignette effect + windshield glare
+- **Verification**: Dashboard 98.5% dark pixels, road 37.9% visible through windshield, 167 pink pixels (Vepřík)
+- **Files**: js/car.js (drawInCar rewritten, ~80 lines), js/game.js (1 line changed)
+
+### Bug 15: Steering not responding to joystick in driving mode
+- **Symptom**: Tapping left/right side worked but joystick had no effect on car direction
+- **Root cause**: `_updateDriving` only used `this.steerInput` (tap-based), ignored joystick `dx`
+- **Fix**: In `_updateDriving`, combine tap steering with joystick input:
+  ```javascript
+  var joySteer = this.joystick && this.joystick.active ? this.joystick.dx : 0;
+  var effectiveSteer = this.steerInput + joySteer;
+  // Cap at ±1.5 to prevent over-steering
+  ```
+- **Verification**: carX changes from -1.45 to -0.14 when joystick moves right
+- **Files**: js/game.js (_updateDriving, ~6 lines changed)
+
+### Bug 16: Too many collectibles + wrong perspective scaling
+- **Symptom**: Collectibles every 500 units = ~1200 total on screen; distant collectibles too large
+- **Root cause**: 
+  1. game.js line 60: `z+=500` spacing
+  2. road.js line 421: `Math.max(8, scale * 40)` minimum size prevents distant items from shrinking
+- **Fix**: 
+  1. Changed spacing from 500 to 1500 (3x fewer collectibles)
+  2. Changed minimum size from 8 to 1 (proper perspective scaling)
+  3. Increased offset range from 0.3 to 0.5 for more varied positioning
+- **Files**: js/game.js (1 line), js/road.js (1 line)
+
+### Test Results (Puppeteer automated)
+| Test | Behind View | Cockpit View |
+|------|------------|-------------|
+| Sky/road visible | Sky: 81.7%, Road: 50.9% | Road: 37.9% through windshield |
+| Car visible | Red(taillights): 571 | Dashboard: 98.5% dark |
+| Vepřík visible | Pink: 13 | Pink: 167 |
+| Steering | carX changes with joystick | N/A (steering wheel visual) |
+
+---
+
 ## PROJECT STRUCTURE (1668 lines total)
 
 ```

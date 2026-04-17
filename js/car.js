@@ -61,174 +61,278 @@ function drawFromBehind(ctx, config, x, y, scale, steerAngle) {
   ctx.save();
   ctx.translate(x, y);
 
+  // Shadow under car (ground contact)
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(0, 10*s, 45*s, 8*s, 0, 0, Math.PI*2);
+  ctx.fill();
+
   if (type === CAR_TYPES.TRACTOR) {
-    // Big rear wheels (from behind, at bottom)
-    var rw = 28 * s;
-    drawWheel(ctx, -rw*1.2, rw*0.2, rw*1.1, wheelStyle, 0);
-    drawWheel(ctx, rw*1.2, rw*0.2, rw*1.1, wheelStyle, 0);
-    // Rear body panel
-    var bw = 54*s, rh = 30*s;
-    ctx.fillStyle = p.body; roundRect(ctx, -bw/2, -rh/2, bw, rh, 4*s); ctx.fill();
-    // Rear panel details - horizontal ribs
+    // Big rear wheels (behind, at bottom, very prominent)
+    var rw = 30 * s;
+    drawWheel(ctx, -rw*1.15, rw*0.15, rw, wheelStyle, 0);
+    drawWheel(ctx, rw*1.15, rw*0.15, rw, wheelStyle, 0);
+    // Rear body — trapezoidal, wider at bottom
+    var bw = 56*s;
+    ctx.fillStyle = p.body;
+    ctx.beginPath();
+    ctx.moveTo(-bw/2, -8*s);
+    ctx.lineTo(bw/2, -8*s);
+    ctx.lineTo(bw*0.48, -32*s);
+    ctx.lineTo(-bw*0.48, -32*s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 2*s; ctx.stroke();
+    // Rear panel ridges
     ctx.strokeStyle = p.accent; ctx.lineWidth = 1.5*s;
     for (var ri = 0; ri < 3; ri++) {
       ctx.beginPath();
-      ctx.moveTo(-bw*0.4, -rh*0.3 + ri*rh*0.3);
-      ctx.lineTo(bw*0.4, -rh*0.3 + ri*rh*0.3);
+      ctx.moveTo(-bw*0.42, -12*s + ri*10*s);
+      ctx.lineTo(bw*0.42, -12*s + ri*10*s);
       ctx.stroke();
     }
-    // Taillights (red, on left and right of rear)
-    ctx.fillStyle = '#ff2222';
-    ctx.beginPath(); ctx.arc(-bw*0.38, 0, 5*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bw*0.38, 0, 5*s, 0, Math.PI*2); ctx.fill();
-    // Taillight glow
-    ctx.fillStyle = 'rgba(255,100,50,0.3)';
-    ctx.beginPath(); ctx.arc(-bw*0.38, 0, 8*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bw*0.38, 0, 8*s, 0, Math.PI*2); ctx.fill();
-    // License plate
-    ctx.fillStyle = '#ffffcc'; ctx.fillRect(-bw*0.12, -rh*0.1, bw*0.24, rh*0.25);
-    ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.strokeRect(-bw*0.12, -rh*0.1, bw*0.24, rh*0.25);
-    // Exhaust pipes (top)
-    ctx.fillStyle = '#666';
-    ctx.fillRect(-bw*0.3, -rh*1.8, 5*s, rh*0.8);
-    ctx.fillRect(bw*0.2, -rh*2.0, 5*s, rh*0.9);
-    // Exhaust smoke
-    ctx.fillStyle = 'rgba(150,150,150,0.3)';
-    ctx.beginPath(); ctx.arc(-bw*0.28, -rh*2.2, 6*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(-bw*0.25, -rh*2.6, 8*s, 0, Math.PI*2); ctx.fill();
-    // Cab (visible above rear body from behind going uphill, or just below)
-    ctx.fillStyle = p.accent; roundRect(ctx, -bw*0.42, -rh*1.5, bw*0.84, rh*1.4, 4*s); ctx.fill();
-    // Rear window of cab
-    ctx.fillStyle = '#88bbdd'; ctx.fillRect(-bw*0.35, -rh*1.3, bw*0.7, rh*0.5);
-    // Vepřík ears peeking from cab
-    drawVepriksEars(ctx, -2*s, -rh*1.35, 3.5*s);
-    // Small front wheels (barely visible from behind)
-    var fw = 16 * s;
-    drawWheel(ctx, -fw*1.3, -fw*1.4, fw, wheelStyle, 0);
-    drawWheel(ctx, fw*1.3, -fw*1.4, fw, wheelStyle, 0);
+    // Big red taillights (circle with glow)
+    ctx.fillStyle = '#ff1111';
+    ctx.beginPath(); ctx.arc(-bw*0.38, -2*s, 7*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw*0.38, -2*s, 7*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,80,50,0.4)';
+    ctx.beginPath(); ctx.arc(-bw*0.38, -2*s, 12*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw*0.38, -2*s, 12*s, 0, Math.PI*2); ctx.fill();
+    // Inner bright spot
+    ctx.fillStyle = '#ff6644';
+    ctx.beginPath(); ctx.arc(-bw*0.38, -2*s, 3*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw*0.38, -2*s, 3*s, 0, Math.PI*2); ctx.fill();
+    // License plate (yellow rectangle)
+    ctx.fillStyle = '#ffee88'; ctx.fillRect(-bw*0.13, 4*s, bw*0.26, 10*s);
+    ctx.strokeStyle = '#aa9944'; ctx.lineWidth = 1; ctx.strokeRect(-bw*0.13, 4*s, bw*0.26, 10*s);
+    // Bumper (metal bar)
+    ctx.fillStyle = '#777'; ctx.fillRect(-bw*0.45, 14*s, bw*0.9, 5*s);
+    ctx.fillStyle = '#999'; ctx.fillRect(-bw*0.45, 14*s, bw*0.9, 2*s);
+    // Exhaust pipes (top, behind cab)
+    ctx.fillStyle = '#555';
+    ctx.fillRect(-bw*0.32, -50*s, 6*s, 20*s);
+    ctx.fillRect(bw*0.25, -54*s, 6*s, 24*s);
+    // Exhaust rings (smoke effect)
+    ctx.fillStyle = 'rgba(140,140,140,0.25)';
+    ctx.beginPath(); ctx.arc(-bw*0.29, -58*s, 8*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-bw*0.26, -65*s, 11*s, 0, Math.PI*2); ctx.fill();
+    // Cab (raised behind body)
+    ctx.fillStyle = p.accent;
+    ctx.beginPath();
+    ctx.moveTo(-bw*0.4, -32*s);
+    ctx.lineTo(bw*0.4, -32*s);
+    ctx.lineTo(bw*0.36, -58*s);
+    ctx.lineTo(-bw*0.36, -58*s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = p.detail; ctx.lineWidth = 1.5*s; ctx.stroke();
+    // Cab rear window
+    ctx.fillStyle = '#88bbdd'; ctx.fillRect(-bw*0.3, -56*s, bw*0.6, 18*s);
+    ctx.strokeStyle = p.detail; ctx.strokeRect(-bw*0.3, -56*s, bw*0.6, 18*s);
+    // Vepřík ears from cab
+    drawVepriksEars(ctx, -2*s, -52*s, 4*s);
+    // Small front wheels (barely visible)
+    var fw = 17 * s;
+    drawWheel(ctx, -fw*1.2, -fw*1.2, fw, wheelStyle, 0);
+    drawWheel(ctx, fw*1.2, -fw*1.2, fw, wheelStyle, 0);
 
   } else if (type === CAR_TYPES.RACING) {
-    // Rear wheels
-    var rw2 = 14*s;
-    drawWheel(ctx, -rw2*1.6, rw2*0.8, rw2*1.1, wheelStyle, 0);
-    drawWheel(ctx, rw2*1.6, rw2*0.8, rw2*1.1, wheelStyle, 0);
-    // Rear body - wide and low
-    var rw3 = 58*s, rh2 = 22*s;
-    ctx.fillStyle = p.body; roundRect(ctx, -rw3/2, -rh2/2, rw3, rh2, 6*s); ctx.fill();
-    // Center diffuser
-    ctx.fillStyle = p.detail; ctx.fillRect(-rw3*0.15, rh2*0.2, rw3*0.3, rh2*0.3);
-    // Rear spoiler (big, at the back - bottom of screen)
-    ctx.fillStyle = p.detail;
-    ctx.fillRect(-rw3*0.5, rh2*0.15, rw3, 7*s);
-    // Spoiler supports
-    ctx.fillRect(-rw3*0.38, rh2*0.05, 5*s, 12*s);
-    ctx.fillRect(rw3*0.38-5*s, rh2*0.05, 5*s, 12*s);
-    // Taillights (full-width LED strip style)
-    ctx.fillStyle = '#ff1111';
-    ctx.fillRect(-rw3*0.42, -rh2*0.15, rw3*0.15, rh2*0.4);
-    ctx.fillRect(rw3*0.27, -rh2*0.15, rw3*0.15, rh2*0.4);
-    // Taillight glow
-    ctx.fillStyle = 'rgba(255,50,50,0.35)';
-    ctx.fillRect(-rw3*0.46, -rh2*0.2, rw3*0.22, rh2*0.5);
-    ctx.fillRect(rw3*0.23, -rh2*0.2, rw3*0.22, rh2*0.5);
-    // Exhaust pipes (center dual)
-    ctx.fillStyle = '#444';
-    ctx.beginPath(); ctx.arc(-rw3*0.08, rh2*0.3, 4*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(rw3*0.08, rh2*0.3, 4*s, 0, Math.PI*2); ctx.fill();
+    // Rear wheels (wide, prominent)
+    var rw2 = 15*s;
+    drawWheel(ctx, -rw2*1.55, rw2*0.7, rw2, wheelStyle, 0);
+    drawWheel(ctx, rw2*1.55, rw2*0.7, rw2, wheelStyle, 0);
+    // Rear body — wide, aerodynamic, with curves
+    var rw3 = 62*s, rh2 = 24*s;
+    ctx.fillStyle = p.body;
+    ctx.beginPath();
+    ctx.moveTo(-rw3/2, -rh2*0.3);
+    ctx.lineTo(rw3/2, -rh2*0.3);
+    ctx.lineTo(rw3*0.48, rh2*0.4);
+    ctx.quadraticCurveTo(rw3*0.45, rh2*0.55, rw3*0.35, rh2*0.5);
+    ctx.lineTo(-rw3*0.35, rh2*0.5);
+    ctx.quadraticCurveTo(-rw3*0.45, rh2*0.55, -rw3*0.48, rh2*0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 2*s; ctx.stroke();
+    // Center diffuser (black triangle)
     ctx.fillStyle = '#222';
-    ctx.beginPath(); ctx.arc(-rw3*0.08, rh2*0.3, 2*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(rw3*0.08, rh2*0.3, 2*s, 0, Math.PI*2); ctx.fill();
-    // Rear window
-    ctx.fillStyle = '#6699bb'; ctx.beginPath();
-    ctx.moveTo(-rw3*0.22, -rh2*0.1); ctx.lineTo(rw3*0.22, -rh2*0.1);
-    ctx.lineTo(rw3*0.15, -rh2*0.55); ctx.lineTo(-rw3*0.15, -rh2*0.55);
+    ctx.beginPath();
+    ctx.moveTo(-rw3*0.12, rh2*0.25);
+    ctx.lineTo(rw3*0.12, rh2*0.25);
+    ctx.lineTo(0, rh2*0.5);
     ctx.closePath(); ctx.fill();
-    // Vepřík visible through rear window
-    drawVepriksEars(ctx, 0, -rh2*0.35, 3*s);
-    // Small front wheels (barely visible from behind)
+    // Big rear spoiler (horizontal wing at bottom)
+    ctx.fillStyle = p.detail;
+    ctx.fillRect(-rw3*0.52, rh2*0.35, rw3*1.04, 9*s);
+    // Spoiler edge highlight
+    ctx.fillStyle = p.body;
+    ctx.fillRect(-rw3*0.52, rh2*0.35, rw3*1.04, 3*s);
+    // Spoiler endplates (vertical at edges)
+    ctx.fillStyle = p.detail;
+    ctx.fillRect(-rw3*0.52, rh2*0.15, 6*s, 22*s);
+    ctx.fillRect(rw3*0.52-6*s, rh2*0.15, 6*s, 22*s);
+    // Spoiler supports
+    ctx.fillStyle = p.detail;
+    ctx.fillRect(-rw3*0.35, rh2*0.2, 5*s, 18*s);
+    ctx.fillRect(rw3*0.35-5*s, rh2*0.2, 5*s, 18*s);
+    // Wide taillight bar (full width, iconic racing look)
+    ctx.fillStyle = '#ee1111';
+    ctx.fillRect(-rw3*0.42, -rh2*0.1, rw3*0.84, 8*s);
+    // Taillight segments
+    ctx.fillStyle = '#ff3333';
+    for (var ts = 0; ts < 6; ts++) {
+      var segX = -rw3*0.38 + ts * rw3*0.14;
+      ctx.fillRect(segX, -rh2*0.08, rw3*0.08, 5*s);
+    }
+    // Taillight glow
+    ctx.fillStyle = 'rgba(255,30,30,0.3)';
+    ctx.fillRect(-rw3*0.46, -rh2*0.18, rw3*0.92, 14*s);
+    // Center exhaust pipes (dual, chrome)
+    ctx.fillStyle = '#555';
+    ctx.beginPath(); ctx.arc(-rw3*0.07, rh2*0.35, 5*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rw3*0.07, rh2*0.35, 5*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(-rw3*0.07, rh2*0.35, 3*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rw3*0.07, rh2*0.35, 3*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-rw3*0.07, rh2*0.35, 1.5*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rw3*0.07, rh2*0.35, 1.5*s, 0, Math.PI*2); ctx.fill();
+    // Rear window (raked, narrow)
+    ctx.fillStyle = '#5588aa';
+    ctx.beginPath();
+    ctx.moveTo(-rw3*0.2, -rh2*0.05);
+    ctx.lineTo(rw3*0.2, -rh2*0.05);
+    ctx.lineTo(rw3*0.14, -rh2*0.6);
+    ctx.lineTo(-rw3*0.14, -rh2*0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 1.5*s; ctx.stroke();
+    // Vepřík through window
+    drawVepriksEars(ctx, 0, -rh2*0.3, 3.5*s);
+    // Front wheels (tiny, barely visible)
     var fw2 = 12*s;
-    drawWheel(ctx, -fw2*1.4, -fw2*1.3, fw2, wheelStyle, 0);
-    drawWheel(ctx, fw2*1.4, -fw2*1.3, fw2, wheelStyle, 0);
+    drawWheel(ctx, -fw2*1.3, -fw2*1.2, fw2, wheelStyle, 0);
+    drawWheel(ctx, fw2*1.3, -fw2*1.2, fw2, wheelStyle, 0);
 
   } else if (type === CAR_TYPES.TRUCK) {
-    // Rear wheels (dual wheels)
-    var rw4 = 16*s;
-    drawWheel(ctx, -rw4*1.3, rw4*0.2, rw4, wheelStyle, 0);
-    drawWheel(ctx, -rw4*1.3, rw4*1.6, rw4, wheelStyle, 0);
-    drawWheel(ctx, rw4*1.3, rw4*0.2, rw4, wheelStyle, 0);
-    drawWheel(ctx, rw4*1.3, rw4*1.6, rw4, wheelStyle, 0);
-    // Cargo bed rear panel
-    var tw = 40*s, th = 34*s;
-    ctx.fillStyle = p.accent; roundRect(ctx, -tw/2, -th/2, tw, th, 3*s); ctx.fill();
-    // Cargo bed door lines
+    // Rear wheels (dual axle, 4 wheels)
+    var rw4 = 17*s;
+    drawWheel(ctx, -rw4*1.25, rw4*0.15, rw4, wheelStyle, 0);
+    drawWheel(ctx, -rw4*1.25, rw4*1.5, rw4, wheelStyle, 0);
+    drawWheel(ctx, rw4*1.25, rw4*0.15, rw4, wheelStyle, 0);
+    drawWheel(ctx, rw4*1.25, rw4*1.5, rw4, wheelStyle, 0);
+    // Cargo bed rear — tall rectangle
+    var tw = 42*s, th = 38*s;
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(-tw/2, -th/2, tw, th);
+    ctx.strokeStyle = p.detail; ctx.lineWidth = 2*s;
+    ctx.strokeRect(-tw/2, -th/2, tw, th);
+    // Cargo door vertical line
     ctx.strokeStyle = p.detail; ctx.lineWidth = 1.5*s;
-    ctx.beginPath(); ctx.moveTo(-tw/2, 0); ctx.lineTo(tw/2, 0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, -th/2); ctx.lineTo(0, th/2); ctx.stroke();
-    // Bumper
-    ctx.fillStyle = '#555'; ctx.fillRect(-tw*0.55, th*0.35, tw*1.1, 6*s);
-    // Taillights
-    ctx.fillStyle = '#ff2222';
-    ctx.fillRect(-tw*0.48, -th*0.35, 6*s, 10*s);
-    ctx.fillRect(tw*0.42, -th*0.35, 6*s, 10*s);
+    // Horizontal ribs on cargo
+    for (var cr = 0; cr < 4; cr++) {
+      ctx.beginPath();
+      ctx.moveTo(-tw*0.45, -th*0.35 + cr*th*0.23);
+      ctx.lineTo(tw*0.45, -th*0.35 + cr*th*0.23);
+      ctx.stroke();
+    }
+    // Bumper (heavy duty, chrome)
+    ctx.fillStyle = '#888'; ctx.fillRect(-tw*0.6, th*0.38, tw*1.2, 8*s);
+    ctx.fillStyle = '#aaa'; ctx.fillRect(-tw*0.6, th*0.38, tw*1.2, 3*s);
+    // Taillights (vertical rectangles on edges)
+    ctx.fillStyle = '#ff1111';
+    ctx.fillRect(-tw*0.5, -th*0.38, 7*s, 14*s);
+    ctx.fillRect(tw*0.43, -th*0.38, 7*s, 14*s);
     // Taillight glow
-    ctx.fillStyle = 'rgba(255,80,50,0.3)';
-    ctx.fillRect(-tw*0.52, -th*0.38, 10*s, 14*s);
-    ctx.fillRect(tw*0.38, -th*0.38, 10*s, 14*s);
-    // License plate
-    ctx.fillStyle = '#ffffcc'; ctx.fillRect(-tw*0.12, th*0.42, tw*0.24, 8*s);
-    // Cab (visible above/behind cargo from distance)
-    ctx.fillStyle = p.body; roundRect(ctx, -tw*0.42, -th*2.2, tw*0.84, th*1.6, 4*s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,60,40,0.35)';
+    ctx.fillRect(-tw*0.54, -th*0.42, 12*s, 20*s);
+    ctx.fillRect(tw*0.38, -th*0.42, 12*s, 20*s);
+    // Inner bright
+    ctx.fillStyle = '#ff5544';
+    ctx.fillRect(-tw*0.48, -th*0.34, 3*s, 10*s);
+    ctx.fillRect(tw*0.41, -th*0.34, 3*s, 10*s);
+    // License plate (centered on bumper)
+    ctx.fillStyle = '#ffee88'; ctx.fillRect(-tw*0.13, th*0.44, tw*0.26, 9*s);
+    ctx.strokeStyle = '#aa9944'; ctx.lineWidth = 1; ctx.strokeRect(-tw*0.13, th*0.44, tw*0.26, 9*s);
+    // Cab (taller, behind cargo)
+    ctx.fillStyle = p.body;
+    ctx.beginPath();
+    ctx.moveTo(-tw*0.4, -th*2.0);
+    ctx.lineTo(tw*0.4, -th*2.0);
+    ctx.lineTo(tw*0.38, -th*0.6);
+    ctx.lineTo(-tw*0.38, -th*0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 1.5*s; ctx.stroke();
     // Cab rear window
-    ctx.fillStyle = '#88bbdd'; ctx.fillRect(-tw*0.32, -th*2.0, tw*0.64, th*0.5);
+    ctx.fillStyle = '#88bbdd'; ctx.fillRect(-tw*0.3, -th*1.85, tw*0.6, th*0.45);
+    ctx.strokeStyle = p.accent; ctx.strokeRect(-tw*0.3, -th*1.85, tw*0.6, th*0.45);
     // Vepřík ears
-    drawVepriksEars(ctx, 0, -th*1.75, 3*s);
-    // Small front wheels
-    var fw3 = 14*s;
-    drawWheel(ctx, -fw3*1.2, -fw3*1.5, fw3, wheelStyle, 0);
-    drawWheel(ctx, fw3*1.2, -fw3*1.5, fw3, wheelStyle, 0);
+    drawVepriksEars(ctx, 0, -th*1.55, 3.5*s);
+    // Front wheels
+    var fw3 = 15*s;
+    drawWheel(ctx, -fw3*1.1, -fw3*1.3, fw3, wheelStyle, 0);
+    drawWheel(ctx, fw3*1.1, -fw3*1.3, fw3, wheelStyle, 0);
 
   } else if (type === CAR_TYPES.BUS) {
     // Rear wheels
-    var rw5 = 18*s;
-    drawWheel(ctx, -rw5*1.3, rw5*0.3, rw5, wheelStyle, 0);
-    drawWheel(ctx, rw5*1.3, rw5*0.3, rw5, wheelStyle, 0);
-    // Rear body
-    var bw2 = 54*s, rh3 = 38*s;
-    ctx.fillStyle = p.body; roundRect(ctx, -bw2/2, -rh3/2, bw2, rh3, 8*s); ctx.fill();
-    // Rear window
-    ctx.fillStyle = '#77aacc'; ctx.beginPath();
-    ctx.moveTo(-bw2*0.38, -rh3*0.4); ctx.lineTo(bw2*0.38, -rh3*0.4);
-    ctx.lineTo(bw2*0.33, -rh3*0.75); ctx.lineTo(-bw2*0.33, -rh3*0.75);
-    ctx.closePath(); ctx.fill();
-    // Window frame
-    ctx.strokeStyle = p.detail; ctx.lineWidth = 2*s;
+    var rw5 = 19*s;
+    drawWheel(ctx, -rw5*1.2, rw5*0.2, rw5, wheelStyle, 0);
+    drawWheel(ctx, rw5*1.2, rw5*0.2, rw5, wheelStyle, 0);
+    // Rear body — tall rectangle with slight taper
+    var bw2 = 56*s, rh3 = 42*s;
+    ctx.fillStyle = p.body;
     ctx.beginPath();
-    ctx.moveTo(-bw2*0.38, -rh3*0.4); ctx.lineTo(bw2*0.38, -rh3*0.4);
-    ctx.lineTo(bw2*0.33, -rh3*0.75); ctx.lineTo(-bw2*0.33, -rh3*0.75);
+    ctx.moveTo(-bw2/2, -rh3*0.35);
+    ctx.lineTo(bw2/2, -rh3*0.35);
+    ctx.lineTo(bw2*0.47, rh3*0.45);
+    ctx.lineTo(-bw2*0.47, rh3*0.45);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = p.accent; ctx.lineWidth = 2*s; ctx.stroke();
+    // Rear window — large, with frame
+    ctx.fillStyle = '#6699bb';
+    ctx.beginPath();
+    ctx.moveTo(-bw2*0.36, -rh3*0.35);
+    ctx.lineTo(bw2*0.36, -rh3*0.35);
+    ctx.lineTo(bw2*0.32, -rh3*0.78);
+    ctx.lineTo(-bw2*0.32, -rh3*0.78);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = p.detail; ctx.lineWidth = 3*s;
+    ctx.beginPath();
+    ctx.moveTo(-bw2*0.36, -rh3*0.35);
+    ctx.lineTo(bw2*0.36, -rh3*0.35);
+    ctx.lineTo(bw2*0.32, -rh3*0.78);
+    ctx.lineTo(-bw2*0.32, -rh3*0.78);
     ctx.closePath(); ctx.stroke();
-    // Vepřík ears visible through rear window
-    drawVepriksEars(ctx, 0, -rh3*0.55, 3.5*s);
-    // Destination sign
-    ctx.fillStyle = '#222'; ctx.fillRect(-bw2*0.3, -rh3*0.85, bw2*0.6, 10*s);
-    ctx.fillStyle = '#ffcc44'; ctx.font = (8*s)+'px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('VEPÍK', 0, -rh3*0.77);
-    // Taillights
-    ctx.fillStyle = '#ff2222';
-    ctx.beginPath(); ctx.arc(-bw2*0.36, -rh3*0.15, 6*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bw2*0.36, -rh3*0.15, 6*s, 0, Math.PI*2); ctx.fill();
+    // Window divider (horizontal bar)
+    ctx.fillStyle = p.detail; ctx.fillRect(-bw2*0.36, -rh3*0.56, bw2*0.72, 3*s);
+    // Vepřík ears through window
+    drawVepriksEars(ctx, 0, -rh3*0.55, 4*s);
+    // Destination sign (above window)
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-bw2*0.32, -rh3*0.88, bw2*0.64, 11*s);
+    ctx.fillStyle = '#ffcc44'; ctx.font = 'bold '+(9*s)+'px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('VEPÍK', 0, -rh3*0.79);
+    // Taillights (round, prominent)
+    ctx.fillStyle = '#ee1111';
+    ctx.beginPath(); ctx.arc(-bw2*0.38, -rh3*0.05, 8*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw2*0.38, -rh3*0.05, 8*s, 0, Math.PI*2); ctx.fill();
     // Taillight glow
-    ctx.fillStyle = 'rgba(255,60,50,0.3)';
-    ctx.beginPath(); ctx.arc(-bw2*0.36, -rh3*0.15, 10*s, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(bw2*0.36, -rh3*0.15, 10*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,50,40,0.35)';
+    ctx.beginPath(); ctx.arc(-bw2*0.38, -rh3*0.05, 14*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw2*0.38, -rh3*0.05, 14*s, 0, Math.PI*2); ctx.fill();
+    // Inner bright
+    ctx.fillStyle = '#ff6655';
+    ctx.beginPath(); ctx.arc(-bw2*0.38, -rh3*0.05, 4*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bw2*0.38, -rh3*0.05, 4*s, 0, Math.PI*2); ctx.fill();
     // Bumper
-    ctx.fillStyle = '#555'; ctx.fillRect(-bw2*0.45, rh3*0.35, bw2*0.9, 7*s);
+    ctx.fillStyle = '#666'; ctx.fillRect(-bw2*0.48, rh3*0.4, bw2*0.96, 8*s);
+    ctx.fillStyle = '#888'; ctx.fillRect(-bw2*0.48, rh3*0.4, bw2*0.96, 3*s);
     // License plate
-    ctx.fillStyle = '#ffffcc'; ctx.fillRect(-bw2*0.1, rh3*0.15, bw2*0.2, 10*s);
-    ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.strokeRect(-bw2*0.1, rh3*0.15, bw2*0.2, 10*s);
-    // Small front wheels
-    var fw4 = 16*s;
-    drawWheel(ctx, -fw4*1.2, -fw4*1.3, fw4, wheelStyle, 0);
-    drawWheel(ctx, fw4*1.2, -fw4*1.3, fw4, wheelStyle, 0);
+    ctx.fillStyle = '#ffee88'; ctx.fillRect(-bw2*0.12, rh3*0.18, bw2*0.24, 11*s);
+    ctx.strokeStyle = '#aa9944'; ctx.lineWidth = 1; ctx.strokeRect(-bw2*0.12, rh3*0.18, bw2*0.24, 11*s);
+    // Front wheels
+    var fw4 = 17*s;
+    drawWheel(ctx, -fw4*1.1, -fw4*1.2, fw4, wheelStyle, 0);
+    drawWheel(ctx, fw4*1.1, -fw4*1.2, fw4, wheelStyle, 0);
   }
 
   ctx.restore();
