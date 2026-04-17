@@ -263,10 +263,8 @@ Game.prototype._drawOffScreenIndicators=function(w,h){
      else if(sx>w+margin){cx=w;dirX=-1}
      else if(sy>h+margin){cy=h;dirY=-1}
      else if(sy<-margin){cy=0;dirY=1}
-     if(dirY){var ty=sy;if(cy===0&&ty>h)continue;if(cy===h&&ty<0)continue}
-     if(dirX){var tx=sx;if(cx===0&&tx>w)continue;if(cx===w&&tx<0)continue}
-     if(!cy)cy=Math.max(25,Math.min(h-25,sy));
-      if(!cx)cx=Math.max(25,Math.min(w-25,sx));
+   if(dirX!==0)cy=Math.max(25,Math.min(h-25,sy));
+      if(dirY!==0)cx=Math.max(25,Math.min(w-25,sx));
       var flash=Math.sin(this.gameTime*6)*0.3+0.7;
       ctx.save();ctx.translate(cx,cy);ctx.rotate(dirX===-1?Math.PI:dirY===1?Math.PI/2:dirY===-1?-Math.PI/2:0);
      ctx.globalAlpha=flash;ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-8,-12);ctx.lineTo(-4,0);ctx.lineTo(-8,12);ctx.closePath();
